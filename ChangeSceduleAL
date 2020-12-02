@@ -1,0 +1,411 @@
+<!-- c:ChangeSceduleAL -->
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes" controller="ChangeSceduleAL_ctrl" access="global">
+    
+    <!-- Attribute -->
+    <aura:attribute name="dataVar" type="Object" />
+    <aura:attribute name="caseList" type="List" />
+    <aura:attribute name="caseToggle" type="List" />
+    <aura:attribute name="caseToggleSearch" type="List" />
+    <aura:attribute name="caseToggleShow" type="List" />    
+    <aura:attribute name="crtPage" type="Integer" />
+    <aura:attribute name="lastPage" type="Integer" />
+    <aura:attribute name="TotalRecordsCount" type="Integer" />
+    <aura:attribute name="paginationSize" type="Integer" default="5" />    
+    <aura:attribute name="searchVal" type="String"  />    
+    <aura:attribute name="showSpinner" type="Boolean"  />    
+    <!-- Attribute -->
+    
+    <!-- Handler -->
+    <aura:handler name="init" action="{!c.doInIt}" value="{!this}" />
+    <!-- Handler -->
+    
+    <div>
+        <!-- Header -->
+        <div class="slds-page-header">
+            <div class="slds-page-header__row">
+                <div class="slds-page-header__col-title">
+                    <div class="slds-media">
+                        <div class="slds-media__figure">                        
+                            <lightning:icon iconName="action:approval" alternativeText="Approved" title="Approved" />                        
+                        </div>
+                        <div class="slds-media__body">
+                            <div class="slds-page-header__name">
+                                <div class="slds-page-header__name-title">
+                                    <h1>
+                                        <span class="slds-page-header__title slds-truncate" title="Schedule">Schedule</span>
+                                    </h1>
+                                </div>
+                            </div>
+                            <p class="slds-page-header__name-meta">Consultation/Asset Load/Installation</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Header -->           
+        <!-- Spinner -->
+        <aura:if isTrue="{!v.showSpinner}">
+            <div class="demo-only" style="height:6rem">
+                <div class="slds-spinner_container">
+                    <div role="status" class="slds-spinner slds-spinner_medium slds-spinner_brand">
+                        <span class="slds-assistive-text">Loading</span>
+                        <div class="slds-spinner__dot-a"></div>
+                        <div class="slds-spinner__dot-b"></div>
+                    </div>
+                </div>
+            </div>
+        </aura:if>
+        
+        <!-- Spinner -->
+        <!-- Pagination -->
+        <aura:if isTrue="{!if( v.caseToggle.length > 0, true, false ) }" >
+            <div class="slds-grid">
+                <div class="slds-col slds-text-align_left slds-m-bottom_small slds-size_2-of-6">                
+                    <span>
+                        <lightning:buttonGroup>
+                            <lightning:button label="First" disabled="{!v.crtPage == 1}" onclick="{!c.navigation}"  iconName="utility:back" name="first"/>
+                            <lightning:button label="Previous" disabled="{!v.crtPage == 1}" onclick="{!c.navigation}"  iconName="utility:back" name="previous"/>
+                            <lightning:button label="{!v.crtPage+'/'+v.lastPage}" />                                                            
+                            <lightning:button label="Next" disabled="{!(v.lastPage == v.crtPage)}" onclick="{!c.navigation}"  iconName="utility:forward" iconPosition="right" name="next"/>                                
+                            <lightning:button label="Last" disabled="{!(v.lastPage == v.crtPage)}" onclick="{!c.navigation}"  iconName="utility:forward" iconPosition="right" name="last"/>
+                        </lightning:buttonGroup>
+                    </span>                
+                </div>
+                <div class="slds-col slds-size_2-of-6">
+                    <div class="slds-form_horizontal slds-form slds-wrap" style="width:100%;">                    
+                        <lightning:input  onchange="{!c.handleChange}" label="Search" value="{!v.searchVal}" placeholder="enter atleast 3 char" />                                            
+                    </div>                    
+                </div>
+                <div class="slds-col slds-size_2-of-6 slds-text-align_left slds-form_horizontal slds-form slds-wrap">
+                    <lightning:button label="Search" variant="Brand" onclick="{!c.handleSearch}" />
+                    <lightning:button label="Reset" variant="Brand" onclick="{!c.handleReset}" />
+                </div>
+            </div>        
+        </aura:if>
+        <!-- Pagination -->
+        <!-- Table -->
+        <table class="slds-table slds-table_bordered slds-table_striped slds-scrollable" style="width:100%;">
+            <thead>
+                <tr class="slds-line-height_reset">
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Case Number">Case Number</div>
+                    </th>      
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Account Name">Account Name</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title=""></div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody >
+                <aura:iteration items="{!v.caseToggleShow}" var="item">                                
+                    <tr class="slds-hint-parent">
+                        <th data-label="Case Number" scope="row">
+                            <div class="slds-truncate" title="{!item.value.CaseNumber}" >
+                                <a href="javascript:void(0);" name="{!item.value.Id}"  tabindex="-1" onclick="{!c.navigateToRecord}">{!item.value.CaseNumber}</a>
+                            </div>
+                        </th>
+                        <td data-label="Account Name">
+                            <div class="slds-truncate" title="{!item.value.Account.Name}">
+                                <a href="javascript:void(0);" name="{!item.value.AccountId}"  tabindex="-1" onclick="{!c.navigateToRecord}">{!item.value.Account.Name}</a></div>
+                        </td>
+                        <td data-label="Show Scheduled">                            
+                            <lightning:button label="{!item.buttonLabel}" name="{!item.value.Id}" variant="Brand" onclick="{!c.handleClick}" />
+                        </td>                                        
+                    </tr>    
+                    <tr>
+                        <aura:if isTrue="{!item.show}" >
+                            <div class="slds-m-around_medium">
+                                <c:ScheduleDetail Schedules="{!item.value.Schedule__r}" CaseID="{!item.value.Id}" oppId="{!item.oppId}" 
+                                                  caseToggle="{!v.caseToggle}" caseToggleShow="{!v.caseToggleShow}" />
+                            </div>
+                        </aura:if>
+                    </tr>    
+                </aura:iteration> 
+            </tbody>
+        </table>
+    </div>
+    <!-- Table -->
+</aura:component>
+
+**********
+CONTROLLER
+**********
+({
+	doInIt : function(component, event, helper) {
+		helper.doInItHelper(component,event);
+        let currentUser = $A.get("$SObjectType.CurrentUser.username");
+		console.log(currentUser);
+	},
+    handleClick : function(component,event,helper){
+        helper.handleClickHelper(component,event);
+    },
+    navigation : function(component,event,helper){
+        console.log( "In Pagination -->" );
+        helper.navigationHelper(component,event);
+    },
+    handleChange : function(component,event,helper){
+        helper.handleChangeHelper(component,event);
+    },
+    navigateToRecord : function(component,event,helper){
+        helper.navigateToRecordHelper(component,event);
+    },
+    handleReset : function(component,event,helper){
+        helper.handleResetHelper(component,event);
+    },
+    handleSearch : function(component,event,helper){
+        helper.handleSearchHelper(component,event);
+    }
+})
+
+*******
+HELPER
+*******
+({
+    doInItHelper : function(component,event) {
+        component.set("v.showSpinner", true);
+        console.log("in doinithelper --> ");
+        let initData = component.get("c.getInitData");
+        initData.setCallback(this, function(response){
+            let state = response.getState();
+            console.log("in state --> "+state);
+            if( state == 'SUCCESS' ){
+                console.log( response.getReturnValue() );
+                component.set("v.caseList",response.getReturnValue() );
+                let caseList = component.get("v.caseList");
+                let caseToggle = [];
+                let caseToggleShow = [];
+                let paginationSize = $A.get("$Label.c.ChangeSchedulePageSize");
+                component.set("v.paginationSize", paginationSize);
+                for( var i = 0; i<caseList.length; i++ ){
+                    caseToggle.push({
+                        key: caseList[i].Id,
+                        value: caseList[i],
+                        show: false,
+                        oppId: caseList[i].Opportunity__c,
+                        buttonLabel: "Show Schedule"                        
+                    });
+                    if( i < paginationSize ){
+                        caseToggleShow.push({
+                            key: caseList[i].Id,
+                            value: caseList[i],
+                            show: false,
+                            oppId: caseList[i].Opportunity__c,
+                            buttonLabel: "Show Schedule"
+                        });                      
+                    }                    
+                }
+                if( caseToggle.length > 0 ){
+                    component.set("v.crtPage", 1);
+                    let totalRecs = caseToggle.length;
+                    let lastPage = Math.ceil(totalRecs/paginationSize);
+                    component.set("v.lastPage", lastPage);
+                    console.log( "lastPage --> "+lastPage);
+                }                
+                component.set("v.TotalRecordsCount", caseToggle.length); 
+                component.set("v.caseToggle", caseToggle); 
+                component.set("v.caseToggleShow", caseToggleShow); 
+                console.log( "caseToggle --> "+JSON.stringify( caseToggle ));
+                component.set("v.showSpinner", false); 
+            }
+        });
+        $A.enqueueAction(initData);        
+    },
+    handleClickHelper : function(component,event){
+        var caseId = event.getSource().get("v.name");        
+        console.log( "caseId --> "+caseId );
+        var caseToggleShow = component.get("v.caseToggleShow");
+        console.log( "caseToggleShow --> "+JSON.stringify( caseToggleShow ) );
+        for( var i = 0; i<caseToggleShow.length; i++ ){
+            console.log( "IDs --> "+caseToggleShow[i].value.Id );
+            if( caseToggleShow[i].value.Id == caseId ){
+                if( caseToggleShow[i].show ){
+                    caseToggleShow[i].show = false;
+                    caseToggleShow[i].buttonLabel = "Show Schedule";
+                }else{
+                    caseToggleShow[i].show = true;
+                    caseToggleShow[i].buttonLabel = "Hide Schedule";    
+                }
+                
+            }else if( caseToggleShow[i].show == true ){
+                caseToggleShow[i].show = false;
+                caseToggleShow[i].buttonLabel = "Show Schedule";
+            } 
+        }
+        component.set("v.caseToggleShow", caseToggleShow);
+    },
+    handleChangeHelper : function(component,event){
+        console.log("In handleChangeHelper --> ");
+    },
+    navigationHelper : function(component,event){
+        let crtPage = component.get("v.crtPage");
+        let lastPage = component.get("v.lastPage");
+        let paginationSize = component.get("v.paginationSize");
+        let TotalRecordsCount = component.set("v.TotalRecordsCount");
+        let eventVal = event.getSource().get("v.name");        
+        let caseToggleSearch = component.get("v.caseToggleSearch");                 
+        let caseToggle = component.get("v.caseToggle"); 
+        let caseToggleCrt;
+        if( caseToggleSearch.length > 0 ){
+            caseToggleCrt = caseToggleSearch;
+        }else{ caseToggleCrt = caseToggle; }
+        
+        let caseToggleShow = []; 
+        if( eventVal == "first" ){
+            console.log("first --> "); 
+            for(let i = 0; i<paginationSize; i++){
+                caseToggleShow.push(caseToggleCrt[i]);    
+            }
+            component.set("v.crtPage", 1);
+        }
+        else if( eventVal == "previous" ){            
+            crtPage--;            
+            let j;
+            for(let i = 0; i<paginationSize; i++){           
+                if( crtPage == 1 ){
+                    j = i;   
+                }else{
+                    j = i+(parseInt)((crtPage-1)*paginationSize);    
+                }                 
+                caseToggleShow.push(caseToggleCrt[j]);                    
+            }			
+            component.set("v.crtPage", crtPage);	            
+        }
+        else if( eventVal == "next" ){            
+            for(let i = 0; i<paginationSize; i++){ 
+                let j = i+(parseInt)(crtPage*paginationSize);                
+                if( j<caseToggleCrt.length )
+                    caseToggleShow.push(caseToggleCrt[j]);    
+            }
+            component.set("v.crtPage", ++crtPage);
+        }
+        else if( eventVal == "last" ){            
+            for(let i = 0; i<paginationSize; i++){ 
+                let j = i+(parseInt)((lastPage-1)*paginationSize);                
+                if( j<caseToggleCrt.length )
+                    caseToggleShow.push(caseToggleCrt[j]);    
+            }            
+            component.set("v.crtPage", lastPage);
+        }        
+        component.set("v.caseToggleShow", caseToggleShow); 
+        console.log("crtPage --> "+crtPage); 
+        console.log("eventVal --> "+eventVal); 
+    },
+    navigateToRecordHelper : function(component,event){
+        let name = event.target.name;
+        window.open('/' + name);		
+        /*
+        let navEvt = $A.get("e.force:navigateToSObject");
+        navEvt.setParams({
+            "recordId": name,
+            "slideDevName": "detail"
+        });
+        navEvt.fire();
+        */
+    },
+    handleResetHelper : function(component,event){
+        let caseToggle = component.get("v.caseToggle"); 
+        let caseToggleShow = []; 
+        let crtPage = component.get("v.crtPage");
+        let paginationSize = component.get("v.paginationSize");        
+        for(let i = 0; i<paginationSize; i++){
+            caseToggleShow.push(caseToggle[i]);    
+        }                                    
+        component.set("v.crtPage", 1); 
+        let totalRecs = caseToggle.length;
+        let lastPage = Math.ceil(totalRecs/paginationSize);
+        component.set("v.lastPage", lastPage);
+        component.set("v.caseToggleShow", caseToggleShow);    
+        component.set("v.caseToggleSearch", []);    
+        component.set("v.searchVal", "");            
+    },
+    handleSearchHelper : function(component,event){
+        let searchVal = component.get("v.searchVal");
+        console.log( "searchVal --> "+searchVal );
+        var caseToggle = component.get("v.caseToggle");                               
+        if(caseToggle!=undefined || caseToggle.length>0){             
+            var filtereddata = caseToggle.filter(word => (!searchVal) || word.value.CaseNumber.toLowerCase().indexOf(searchVal.toLowerCase()) > -1);  
+            var filtereddataAcc = caseToggle.filter(word => (!searchVal) || word.value.Account.Name.toLowerCase().indexOf(searchVal.toLowerCase()) > -1);  
+            console.log('** '+JSON.stringify( filtereddata ));
+            console.log('** '+JSON.stringify( filtereddataAcc ));
+            let paginationSize = component.get("v.paginationSize");
+            let caseToggleSearch = [];
+            let caseToggleShow = []; 
+            if( filtereddataAcc.length != 0 && filtereddata.length != 0 ){                               
+                let enteredKeys = [];
+                for( let i = 0; i<filtereddataAcc.length; i++ ){
+                    if( enteredKeys.length == 0 || enteredKeys.indexOf(filtereddataAcc[i].key) == -1 ){
+                        //caseToggle.push( filtereddataAcc[i] );
+                        caseToggleSearch.push( filtereddataAcc[i] );
+                        enteredKeys.push( filtereddataAcc[i].key );
+                    }
+                }
+                for( let i = 0; i<filtereddata.length; i++ ){
+                    if( enteredKeys.length == 0 || enteredKeys.indexOf(filtereddata[i].key) == -1 ){
+                        //caseToggle.push( filtereddata[i] );
+                        caseToggleSearch.push( filtereddata[i] );
+                        enteredKeys.push( filtereddata[i].key );
+                    }
+                }
+                component.set("v.crtPage", 1);
+                if( caseToggleSearch.length > paginationSize ){
+                    for( let i = 0; i<paginationSize; i++ ){
+                        caseToggleShow.push( caseToggleSearch[i] )    
+                    }
+                    component.set("v.caseToggleShow", caseToggleShow);
+                }else{ component.set("v.caseToggleShow", caseToggleSearch); }
+                component.set("v.caseToggleShow", caseToggle);
+                let totalRecs = caseToggle.length;
+                let lastPage = Math.ceil(totalRecs/paginationSize);
+                component.set("v.lastPage", lastPage);
+            }else{                
+                if( filtereddataAcc.length != 0 ){
+                    if( filtereddataAcc.length > paginationSize ){
+                        for( let i = 0; i<paginationSize; i++ ){
+                            caseToggleShow.push( caseToggleSearch[i] )    
+                        }
+                        component.set("v.caseToggleShow", caseToggleShow);
+                    }else{ component.set("v.caseToggleShow", filtereddataAcc); }
+                    component.set("v.caseToggleSearch", filtereddataAcc);                                        
+                    component.set("v.crtPage", 1);
+                    let totalRecs = filtereddataAcc.length;
+                    let lastPage = Math.ceil(totalRecs/paginationSize);
+                    component.set("v.lastPage", lastPage);
+                } 
+                if( filtereddata.length != 0 ){
+                    console.log( "here --> " );
+                    if( filtereddata.length > paginationSize ){
+                        for( let i = 0; i<paginationSize; i++ ){
+                            caseToggleShow.push( filtereddata[i] )    
+                        }
+                        component.set("v.caseToggleShow", caseToggleShow);
+                    }else{ component.set("v.caseToggleShow", filtereddata); }
+                    component.set("v.caseToggleSearch", filtereddata);                    
+                    component.set("v.crtPage", 1);
+                    let totalRecs = filtereddata.length;
+                    let lastPage = Math.ceil(totalRecs/paginationSize);
+                    console.log( "lastPage --> "+lastPage );
+                    console.log( "totalRecs --> "+totalRecs );
+                    component.set("v.lastPage", lastPage);
+                }else if( filtereddata.length == 0 && filtereddataAcc.length == 0 ){
+                    this.showInfoToast( component,event,"No Records", "No records were found in search" );
+                }
+                
+            }
+            
+        }
+    },
+    showInfoToast : function(component, event, title, message) {
+        var toastEvent = $A.get("e.force:showToast");
+        toastEvent.setParams({
+            title : title,
+            message: message,
+            duration:'4000',
+            key: 'info_alt',
+            type: 'info',
+            mode: 'dismissible'
+        });
+        toastEvent.fire();
+    }    
+})
