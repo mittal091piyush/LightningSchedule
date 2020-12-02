@@ -1,0 +1,1014 @@
+<!-- c:BulkKioskCreationRequest --> 
+<aura:component implements="force:appHostable,force:lightningQuickAction" access="global" controller="BulkKioskCreationRequest_ctrl">
+    
+    <!-- Attributes -->
+    <aura:attribute name="SelectedCount" type="integer" default="0"/>
+    <aura:attribute name="StartPage" type="Integer" />
+    <aura:attribute name="EndPage" type="Integer"/>
+    <aura:attribute name="PageSize" type="Integer"/>
+    <aura:attribute name="CurrentPage" type="integer" default="1"/>
+    <aura:attribute name="TotalPagesCount" type="integer" default="0"/>
+    <aura:attribute name="TotalRecordsCount" type="Integer" default="0"/>
+    <aura:attribute name="NoOfRecordsDisplayed" type="integer" default="0"/>
+    
+    <aura:attribute name="allData" type="Object" />
+    <aura:attribute name="dataList" type="List" />
+    <aura:attribute name="dataListCountry" type="List" />
+    <aura:attribute name="dataListPaginated" type="List" />
+    
+    <aura:attribute name="selectedCountTotal" type="Integer" default="0"/>
+    <aura:attribute name="isShowSelected" type="Boolean" default="false"/>
+    <aura:attribute name="countryFilter" type="List" />
+    <aura:attribute name="selectedItems" type="List" />
+    <aura:attribute name="caseNameList" type="string[]"/>
+    <aura:attribute name="selectedCase" type="string" default = ""/>
+    <aura:attribute name="sortOrderToPicklistVals" type="List" />    
+    <aura:attribute name="isOpen" type="Boolean" default="false" />   
+    <aura:attribute name="hideButton" type="Boolean" default="true" />
+    <aura:attribute name="currentTimeDetId" Type="String" />
+    <aura:attribute name="currentKey" type="String" />
+    <aura:attribute name="timeDetailList" type="List" />
+    <aura:attribute name="nonReqFieldIndexes" type="List" />
+    <aura:attribute name="productNameList" type="List" />  
+    <aura:attribute name="colName2Index" type="Map" />
+    <aura:attribute name="missingValDateKey" type="List" />   
+    <aura:attribute name="nonEditableIndex" type="List" />   
+    <aura:attribute name="emailIndexes" type="List" />       
+    <aura:attribute name="successMsg" type="String"/>
+    
+    <ltng:require styles="{!$Resource.multilineToastCSS}" />
+    
+    <!-- Handler --> 
+    <aura:handler name="init" action="{!c.doInIt}" value="{!this}" />
+    <aura:handler event="force:refreshView" action="{!c.doInIt}" />
+    <aura:handler name="onchange" event="c:multiSelectgenericEvent" action="{!c.handleSelectChange}"/>
+    <aura:handler name="onchangeSearch" event="c:searchAsYouGoEvent" action="{!c.showSearchedData}"/>
+    
+    <!-- Body -->    
+    <div class="slds-m-around_small">
+        <!-- Heading -->
+        <div class="slds-page-header--object-home slds-page-header slds-shrink-none panel-header" role="banner"
+             style="height:15%">
+            <div class="slds-grid">
+                <div class="slds-media">
+                    <div class="slds-media__figure">
+                        <span class="uiImage">
+                            <lightning:icon iconName="standard:event" alternativeText="Event" />
+                        </span>
+                    </div>
+                    <div class="slds-media__body slds-text-color--weak uiOutputText" style="font-size:12px; font-family:'Salesforce Sans',Arial,sans-serif; text-overflow: ellipsis;">
+                        <nav role="navigation" aria-label="Breadcrumbs">
+                            <ol class="slds-breadcrumb slds-list--horizontal">
+                                <li class="slds-breadcrumb__item slds-line-height--reset">
+                                    <span class="uiOutputText" data-aura-class="uiOutputText">
+                                        Kiosk Creation
+                                    </span>
+                                </li>
+                            </ol>
+                        </nav>
+                        <h1 class="slds-page-header__title slds-text-color--default slds-p-right--x-small">
+                            <span class="triggerLinkText selectedListView uiOutputText forceListViewPicker" data-aura-class="uiOutputText forceListViewPicker">
+                                Kiosks to Create
+                            </span>
+                        </h1>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Heading -->                
+        <div>&nbsp;</div>
+        <div>&nbsp;</div>
+        
+        <!-- Filters -->
+        <div class="slds-grid slds-wrap slds-gutters "> <!-- slds-p-vertical_medium slds-m-horizontal_xxx-small -->                                    
+            
+            <div class="slds-col"> 
+                <c:multiSelectgeneric label="Country Filter" options="{!v.countryFilter}" selectedItems="{!v.selectedItems}" sorting="false"/>
+            </div>
+            
+            <div class="slds-p-top_xx-small slds-col slds-float-left">                                
+                <div>&nbsp;</div>
+                <lightning:button label="Create Kiosk" onclick="{!c.handleKioskCreation}" variant="brand" aura:id='Reject' disabled="{!v.hideButton}" />                 <!--  --> 
+            </div>
+            <div class="slds-col">
+                <c:searchAsYouGo dataToSearch="{!v.caseNameList}" selectedRecord = "{!v.selectedCase}" label = "Search"/> 
+            </div>	
+            <div class="slds-p-top_xx-small slds-col">
+                <span class="slds-float_right" style="margin-right: 10px;margin-left: 10px;">
+                    <div>&nbsp;</div>
+                    <lightning:input type="toggle" disabled="{!if( v.dataListPaginated.length == 0, true, false ) }" label="Show Selected" name="Selected" checked="{!v.isShowSelected}" onchange="{!c.showSelected}"/>
+                </span>
+            </div>
+            
+        </div>
+        <!-- Filters -->        
+        <div>&nbsp;</div>
+        <div>&nbsp;</div>
+        
+        <aura:if isTrue="{!if( v.dataListPaginated.length > 0, true, false ) }" >
+            <div class = "slds-grid">
+                <div class="slds-col"> 
+                    <span class="slds-badge slds-badge_lightest slds-float_left"
+                          style="">
+                        Records {!v.StartPage+1} - {!v.EndPage+1} of {!v.TotalRecordsCount}
+                    </span>
+                </div>
+                <div class="slds-col slds-text-align_center slds-m-bottom_small">
+                    <span>
+                        <lightning:button label="First" disabled="{!v.StartPage == 0}" onclick="{!c.navigation}" variant="brand" iconName="utility:back" name="first"/>
+                        <lightning:button label="Previous" disabled="{!v.StartPage == 0}" onclick="{!c.navigation}" variant="brand" iconName="utility:back" name="previous"/>
+                        <lightning:button label="Next" disabled="{!(v.EndPage + 1) >= v.TotalRecordsCount}" onclick="{!c.navigation}" variant="brand" iconName="utility:forward" iconPosition="right" name="next"/>
+                        <lightning:button label="Last" disabled="{!(v.EndPage + 1) >= v.TotalRecordsCount}" onclick="{!c.navigation}" variant="brand" iconName="utility:forward" iconPosition="right" name="last"/>
+                    </span>
+                </div>
+                <div class="slds-col"> 
+                    <span class="slds-badge slds-badge_lightest slds-float_right"
+                          style="margin-right: 10px;margin-left: 10px;">
+                        Page {!v.CurrentPage} of {!v.TotalPagesCount}
+                    </span>
+                </div>
+            </div>
+        </aura:if>
+        
+        <div aura:id="modalspinnerLookup" class="slds-hide">
+            <lightning:spinner variant="brand" size="medium" alternativeText="Loading"/>
+        </div>
+        
+        <!-- Table --> 
+        <!--   <div style="overflow-x: auto;overflow-y; auto;height:75%" >-->
+        <div class="slds-scrollable" style="height:75vh" >
+            <aura:if isTrue="{!if( v.dataListPaginated.length > 0, true, false ) }" >
+                <table class="cust slds-table slds-table_cell-buffer slds-table_bordered slds-table_col-bordered">
+                    <thead >
+                        <tr class="slds-line-height_reset" >
+                            <th class="slds-text-align_right" scope="col" >
+                                <ui:inputCheckbox aura:id="selectAllId" change="{!c.selectAllCheckbox}"/>                     
+                            </th>
+                            <aura:iteration items="{!v.allData.mdtList}" var="item" indexVar="key" >                   
+                                <th class="" scope="col" style="width:200px;">
+                                    <div class="slds-truncate"  title="{!item.Column_Name__c}">{!item.Column_Name__c}</div>
+                                </th>             
+                            </aura:iteration>
+                            <th style="width:140px;">
+                                <div class="slds-truncate" title="Product" style="width:140px;">Product</div>                    	
+                            </th>
+                            <th style="width:140px;">
+                                <div class="slds-truncate" title="LayoutArrangement" style="width:140px;">LayoutArrangement</div>                    	
+                            </th>
+                            <th style="width:140px;">
+                                <div class="slds-truncate" title="Generation" style="width:140px;">Generation</div>                    	
+                            </th>
+                            <th style="width:140px;">
+                                <div class="slds-truncate" title="EnvironmentType" style="width:140px;">EnvironmentType</div>                    	
+                            </th>
+                            <th>
+                                <div class="slds-truncate" title="time">Operating Hours</div>                    	
+                            </th>
+                        </tr>
+                    </thead>            
+                    
+                    <tbody >
+                        <aura:iteration items="{!v.dataListPaginated}" var="item"  > 
+                            <tr class="slds-hint-parent" aura:id="{!item.key}"  > 
+                                <td class="slds-text-align_right customC" role="gridcell" >
+                                    <ui:inputCheckbox text="{!item.key}" value="{!item.isSelected}" change="{!c.checkboxSelect}"/>                               
+                                </td>                        
+                                <aura:iteration items="{!item.value.dataValList}" var="keyVar" indexVar="index"> 
+                                    <td role="gridcell" data-label="{!keyVar}"  > <!-- width="70%" -->                                                                                                                                                                                                                                                          
+                                        <aura:if isTrue="{! ( keyVar.dataType == 'Text' ) }" >                                            
+                                            <lightning:input title="{!keyVar.val}" type="text" name="{!item.key}" aura:id="input"
+                                                             disabled="{!!keyVar.isEditable}" required="{!keyVar.isRequired}" 
+                                                             value="{!keyVar.val}" messageWhenValueMissing=" " style="width:200px;" />                                            	                                                	
+                                        </aura:if>                                            
+                                        <aura:if isTrue="{!( keyVar.dataType == 'Picklist' )}" >                                                                                                
+                                            <aura:iteration items="{!v.sortOrderToPicklistVals}" var="optVar" >                                                                                                                                                            
+                                                <aura:if isTrue="{!( optVar.key == keyVar.colName )}" >                                                                                                                     
+                                                    <lightning:combobox name="{!item.key}" aura:id="input" required="{!keyVar.isRequired}" label="" value="{!keyVar.val}" options="{!optVar.value}" messageWhenValueMissing=" " />
+                                                </aura:if>                                                    
+                                            </aura:iteration>
+                                        </aura:if>	    
+                                        <aura:if isTrue="{!( keyVar.dataType == 'Text Area' )}" >
+                                            <lightning:textarea name="{!item.key}" aura:id="input"
+                                                                disabled="{!!keyVar.isEditable}" required="{!keyVar.isRequired}" 
+                                                                value="{!keyVar.val}" messageWhenValueMissing=" " style="width:200px;" />
+                                        </aura:if>
+                                        <aura:if isTrue="{!( keyVar.dataType == 'Email' )}" >
+                                            <lightning:input type="email" name="{!item.key}" aura:id="input" 
+                                                             disabled="{!!keyVar.isEditable}" required="{!keyVar.isRequired}" 
+                                                             value="{!keyVar.val}" messageWhenValueMissing=" " style="width:200px;" />
+                                        </aura:if>
+                                    </td>
+                                    <!--  {!item.value.dataValList.length} {!index} -->
+                                    <aura:if isTrue="{!item.value.dataValList.length == (index + 1) }" >
+                                        <td width="170%" >                                                
+                                            <lightning:combobox aura:id="input" name="{!item.key}" required="true" label="" value="{!item.value.prodName }" options="{! v.productNameList }" onchange="{!c.handleProductSelect}" messageWhenValueMissing=" "/>
+                                        </td>  
+                                        <td>
+                                            <lightning:input disabled="true" name="{!item.key + '@LayoutArrangement'}" aura:id="prodFields" value="{!item.layout}" />
+                                        </td>
+                                        <td>
+                                            <lightning:input disabled="true" name="{!item.key + '@Generation'}" aura:id="prodFields" value="{!item.gen}" />
+                                        </td>
+                                        <td>
+                                            <lightning:input disabled="true" name="{!item.key + '@EnvironmentType'}" aura:id="prodFields" value="{!item.env}" />
+                                        </td>
+                                        <td>
+                                            <lightning:button label="Operating Hours" onclick="{!c.openTimeModal}" variant="brand" aura:id="{!item.key}" name="{!item.key}" />                	                                                                                    
+                                            <!-- MODAL -->
+                                            
+                                            <aura:if isTrue="{!v.isOpen}"> 
+                                                <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+                                                    <div class="slds-modal__container">
+                                                        <!-- ###### MODAL BOX HEADER Start ######-->
+                                                        <header class="slds-modal__header">
+                                                            <lightning:buttonIcon iconName="utility:close" onclick="{! c.closeModelWithoutUpdate }" variant="bare-inverse" alternativeText="close" class="slds-modal__close"/>                                                                                                                                                                                                                                                                                                                        
+                                                            <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Opening Closing Time Detials</h2>
+                                                        </header>
+                                                        <!-- <c:KioskOperatingHours filterOptions="{!v.filterOptions}" key="{!v.currentKey}" isOpen="{!v.isOpen}" />  -->
+                                                        <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                                                            <div align="center"><span style="color:red">Please enter the time value in format "HH:MM:SS" </span></div>
+                                                            <div class="slds-grid">
+                                                                <div class="slds-col slds-size_1-of-8" align="center"><ui:inputCheckbox aura:id="allDay" label="" name="{!item.key}" change="{!c.onAllDayCheck}" /></div> 
+                                                                <div class="slds-col slds-size_1-of-8" align="left">24/7 store </div>
+                                                                <div class="slds-col slds-size_6-of-8" align="left"><span style="color:red">Warning: Clicking this will erase all pre-filled times below</span></div>
+                                                            </div>
+                                                            <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_col-bordered">
+                                                                <thead >
+                                                                    <tr class="slds-line-height_reset">
+                                                                        <th class="" scope="col">                                                                    
+                                                                            <div class="slds-truncate" title="Day">Day</div>
+                                                                        </th>
+                                                                        <th class="" scope="col">                                                                    
+                                                                            <div class="slds-truncate" title="Open Time">Open Time</div>
+                                                                        </th>
+                                                                        <th class="" scope="col">
+                                                                            <div class="slds-truncate" title="Mid Day Close">Mid Day Close</div>
+                                                                        </th>
+                                                                        <th class="" scope="col">
+                                                                            <div class="slds-truncate" title="Mid Day Open">Mid Day Open</div>
+                                                                        </th>
+                                                                        <th class="" scope="col">
+                                                                            <div class="slds-truncate" title="Close Time">Close Time</div>
+                                                                        </th>                
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>              
+                                                                    <aura:iteration items="{!v.timeDetailList}" var="itemVar">
+                                                                        <tr class="slds-hint-parent" >                    
+                                                                            <td role="gridcell" data-label="{!itemVar.Day}" >                                                                                
+                                                                                <div class="slds-truncate" >{!itemVar.Day}</div>                                                                        
+                                                                            </td>                    
+                                                                            <td role="gridcell" data-label="{!itemVar.OpenTime}" id="{!itemVar.Day + '@OpenTime' }" >                                                                                                                                                                                  
+                                                                                
+                                                                                <lightning:input type="text" Style="border-color:red;" aura:id="OpenTime" name="{!itemVar.Day}" value="{!itemVar.OpenTime}" onblur="{!c.handleTimeVal}" placeholder="HH:MM:SS"/>                      
+                                                                                
+                                                                                <!-- <input type="text" class="slds-input" id="{!itemVar.Day + '@OpenTime'}" name="Test" aura:id="OpenTime" value="{!itemVar.OpenTime}" onblur="{!c.handleTimeVal}" placeholder="HH:MM:SS" /> -->
+                                                                            </td>                    
+                                                                            <td role="gridcell" data-label="{!itemVar.MidDayCloseTime}" id="{!itemVar.Day}" >                                                                                
+                                                                                <lightning:input type="text" aura:id="MidDayCloseTime" value="{!itemVar.MidDayCloseTime}" onblur="{!c.handleTimeVal}" placeholder="HH:MM:SS"/>                        
+                                                                            </td>                    
+                                                                            <td role="gridcell" data-label="{!itemVar.MidDayOpenTime}" id="{!itemVar.Day}" >                                                                                
+                                                                                <lightning:input type="text" aura:id="MidDayOpenTime" value="{!itemVar.MidDayOpenTime}" onblur="{!c.handleTimeVal}" placeholder="HH:MM:SS"/>                        
+                                                                            </td>                    
+                                                                            <td role="gridcell" data-label="{!itemVar.CloseTime}" id="{!itemVar.Day}" >                                                                                
+                                                                                <lightning:input type="text" aura:id="CloseTime" value="{!itemVar.CloseTime}" onblur="{!c.handleTimeVal}" placeholder="HH:MM:SS" />                        
+                                                                            </td>                    
+                                                                        </tr>
+                                                                    </aura:iteration>
+                                                                </tbody>
+                                                            </table>    
+                                                        </div>
+                                                        
+                                                        
+                                                        <!--###### MODAL BOX FOOTER Part Start ######-->
+                                                        <footer class="slds-modal__footer">
+                                                            <lightning:button variant="neutral" label="Close" title="Close" onclick="{! c.closeModel }"/>                                                                                                                                                                                                                                      
+                                                            <!-- <lightning:button variant="neutral" label="Update Time" title="Update Time" onclick="{! c.updateTime }"/>  -->                                                                                                                                                                                                                                     
+                                                        </footer>    
+                                                    </div>
+                                                </section>        
+                                                <div class="slds-backdrop slds-backdrop_open"></div>                                                                                    
+                                            </aura:if>                       									
+                                            <!-- MODAL -->	
+                                        </td>
+                                    </aura:if>
+                                </aura:iteration>
+                            </tr> 
+                        </aura:iteration>    
+                    </tbody>
+                    
+                </table>
+                <aura:set attribute="else">
+                    <div class="slds-grid">
+                        <div class="slds-col"></div>
+                        <div class="slds-col"></div>
+                        <div class="slds-col"><p class="slds-text-heading--small slds-p-bottom--medium slds-p-top--medium" style="font-size: xx-large;">There are no records to view </p></div>
+                        <div class="slds-col"></div>
+                    </div>    
+                    <!-- <span style="color:black">There are no records to view </span>	    -->
+                </aura:set>  
+            </aura:if> 
+        </div>  
+        <!-- Table     -->
+        
+    </div>
+    <!-- Body -->
+</aura:component>
+
+***********
+CONTROLLER
+***********
+({
+    doInIt : function(component, event, helper) { 
+        component.set( "v.hideButton", true );
+        component.set( "v.PageSize", parseInt($A.get("$Label.c.BulkkioskPageSize")));
+        helper.getViewData( component,event);
+    },
+    
+    showSelected : function( component,event,helper ){
+        debugger;
+        var checked = component.get("v.isShowSelected");
+        component.set("v.CurrentPage", 1);
+        var dataList = component.get( "v.dataList" );
+        if(checked){
+            var dataListFiltered = [];
+            for( var i in dataList ){
+                if( dataList[i].isSelected  )
+                    dataListFiltered.push(dataList[i]);   
+            }
+            if(dataListFiltered.length>0){
+            	component.set("v.PageSize", dataListFiltered.length);
+            	helper.pagination(component, event, dataListFiltered);
+            }
+            else
+                component.set("v.dataListPaginated", []);
+        }
+        else{
+            component.set( "v.PageSize", parseInt($A.get("$Label.c.BulkkioskPageSize")));
+            if(component.get( "v.dataListCountry").length>0)
+            	helper.pagination(component, event, component.get( "v.dataListCountry"));
+            else
+                helper.pagination(component, event, dataList);
+        }
+    },
+    
+    showSearchedData : function( component,event,helper ){
+        debugger;
+        let eventVal = event.getParam("type");
+        var searchedValue = component.get( "v.selectedCase");
+        var dataList = component.get( "v.dataList" );
+        debugger;
+        if(eventVal == 'Select'){
+            var dataListFiltered = [];
+            for( var i in dataList ){
+                if(dataList[i].value.dataValList[0].val.includes(searchedValue))
+                    dataListFiltered.push(dataList[i]);  
+            }
+            if(dataListFiltered.length>0){
+                component.set("v.PageSize", dataListFiltered.length);
+                helper.pagination(component, event, dataListFiltered);
+            }
+            else
+                component.set("v.dataListPaginated", []);
+        }
+        else{
+            if($A.util.isEmpty(searchedValue)){
+                component.set( "v.PageSize", parseInt($A.get("$Label.c.BulkkioskPageSize")));
+                if(component.get( "v.dataListCountry").length>0)
+                    helper.pagination(component, event, component.get( "v.dataListCountry"));
+                else
+                    helper.pagination(component, event, dataList);
+            }
+        }
+    },
+    
+    openTimeModal : function( component,event,helper ){
+        var name = event.getSource().get( "v.name" );
+        helper.openTimeModalHelper( component,event );    
+    },
+    
+    closeModel : function( component,event,helper ){ 
+        debugger;
+        var timeDetailList = component.get( "v.timeDetailList" );
+        var pattern = /([0-1]?\d|2[0-3]):([0-5]?\d):([0-5]?\d)/;
+        var globalMessage = "";
+        var localMessage = "";
+        var days = '';
+        var utc = new Date().toJSON().slice(0,10).replace(/-/g,'/');        
+        for( var i in timeDetailList ){
+            var day = timeDetailList[i].Day;
+            var OpenTime = timeDetailList[i].OpenTime;
+            var MidDayCloseTime = timeDetailList[i].MidDayCloseTime;
+            var MidDayOpenTime = timeDetailList[i].MidDayOpenTime;
+            var CloseTime = timeDetailList[i].CloseTime;
+            localMessage = '\n'+day+':';
+            var openDate= '' ;
+            var	closeDate= '' ;	
+            if( OpenTime == "" || CloseTime == "" ){ localMessage += "\nPlease enter the Opening and closing time"; }
+            else{                
+                if( !OpenTime.match(pattern) ){ localMessage += "\nPlease enter Opening time in correct formate HH:MM:SS"; }    
+                else{ openDate = new Date( utc.split("/")[0], utc.split("/")[1], utc.split("/")[2], OpenTime.split(":")[0], OpenTime.split(":")[1], OpenTime.split(":")[2] ); }                
+                if( !CloseTime.match(pattern) ){ localMessage += "\nPlease enter Closing time in correct formate HH:MM:SS"; }
+                else{ closeDate = new Date( utc.split("/")[0], utc.split("/")[1], utc.split("/")[2], CloseTime.split(":")[0], CloseTime.split(":")[1], CloseTime.split(":")[2] ); } 
+                if(OpenTime==CloseTime && OpenTime!="00:00:00"){localMessage += "\nOpen Time & Close Time cannot be same, if not 00:00:00";}
+            }
+            var midDayOpenDate = '';
+            var midDayCloseDate = ''; 
+            if( ( MidDayOpenTime == "" && MidDayCloseTime != "" ) || ( MidDayOpenTime != "" && MidDayCloseTime == "" ) ){
+                localMessage += "\nEither MidDayOpen or MidDayClose time is missing";
+            }else if( MidDayOpenTime != "" && MidDayCloseTime != "" ){
+                if( !MidDayOpenTime.match(pattern) ){ localMessage += "\nPlease enter Mid Day Open time in correct formate HH:MM:SS"; }    
+                else{ midDayOpenDate = new Date( utc.split("/")[0], utc.split("/")[1], utc.split("/")[2], MidDayOpenTime.split(":")[0], MidDayOpenTime.split(":")[1], MidDayOpenTime.split(":")[2] ); }
+                if( !MidDayCloseTime.match(pattern) ){ localMessage += "\nPlease enter Mid Day Close time in correct formate HH:MM:SS"; }
+                else{ midDayCloseDate = new Date( utc.split("/")[0], utc.split("/")[1], utc.split("/")[2], MidDayCloseTime.split(":")[0], MidDayCloseTime.split(":")[1], MidDayCloseTime.split(":")[2] ); } 
+                if(MidDayCloseTime==MidDayOpenTime){localMessage += "\nMidDayOpen and MidDayClose time can't be same";}
+            }
+            if( localMessage == '\n'+day+':' ){            
+                if( openDate > closeDate ){ localMessage += "\nClose time can't be less than Open time"; }
+                if( midDayOpenDate != "" && midDayCloseDate != "" ){
+                    if(  ( openDate > midDayCloseDate ) || ( openDate > midDayOpenDate ) || 
+                       ( midDayCloseDate > midDayOpenDate ) || ( midDayCloseDate > closeDate ) ||
+                       ( midDayOpenDate > closeDate ) ){
+                        localMessage += "\nOpen Time < Mid Day close time < Mid Day open time < close time";	    
+                    }
+                }
+            }
+            if( localMessage == '\n'+day+':' ){ localMessage = ""; }
+            else{ globalMessage += localMessage }
+        }
+        if( globalMessage == "" )
+            component.set( "v.isOpen", false ); 
+        else
+            helper.showToast( "Error", globalMessage, "error" ); 
+    },
+    
+    closeModelWithoutUpdate : function( component,event,helper ){
+        component.set( "v.isOpen", false );	   
+    },
+    
+    updateTime : function( component,event,helper ){                        
+        component.set( "v.isOpen", false );            
+    },
+    
+    handleKioskCreation : function( component,event,helper ){           
+        component.set("v.isShowSelected", true);
+        var a = component.get('c.showSelected');
+        a.setCallback(this,function(response){
+            window.setTimeout(
+                $A.getCallback(function() { helper.helperhandleKioskCreation( component,event,helper );  }), 0);
+        });
+        $A.enqueueAction(a);
+    },
+    
+    handleTimeVal : function( component, event, helper ){
+        var val = event.getSource().get( "v.value" );
+        var pattern = /^(?:2[0-3]|[01][0-9]|[0-9]):[0-5][0-9]:[0-5][0-9]$/; //  /^(?:(?:([01]?\d|2[0-3]):)?([0-5]?\d):)?([0-5]?\d)$/        
+        if( val != "" && !val.match(pattern) ){ 
+            var showToast = $A.get("e.force:showToast");
+            showToast.setParams({
+                'title' : "Error",
+                'message' : "Please enter time in correct formate HH:MM:SS",
+                'type' : "error",
+                'mode': 'sticky'
+            });
+            showToast.fire();			
+        }
+    },
+    
+    handleSelectChange : function( component, event, helper ){
+        helper.showspinner(component, event);
+        let selectedVal = event.getParam("data");
+        var allData = component.get( "v.allData" );
+        var countryCodeList = allData.countryCodeList;
+        var selectedCountryCode = [];
+        for( var i in selectedVal[0].values ){
+            selectedCountryCode.push( countryCodeList[ selectedVal[0].values[i] - 1 ] );                
+        }
+        var dataListFiltered = [];
+        var dataListName = [];
+        var dataList = component.get( "v.dataList" );
+        debugger;
+        if( selectedCountryCode.length > 0 ){   
+            for( var i in dataList ){
+                if( selectedCountryCode.indexOf( dataList[i].value.countryCode ) != -1 ){
+                    dataListFiltered.push(dataList[i]);   
+                    dataListName.push(dataList[i].value.dataValList[0].val);
+                }
+            }
+            if( dataListFiltered.length > 0 ){
+                component.set( "v.caseNameList", dataListName);
+                component.set( "v.dataListCountry", dataListFiltered );
+                helper.pagination(component, event, dataListFiltered);
+            }
+            else
+                component.set( "v.dataListPaginated", [] ); 
+        }
+        else{
+            dataListFiltered= [];
+            component.set( "v.dataListCountry", dataListFiltered );
+            helper.pagination(component, event, component.get( "v.dataList"));
+        }
+        helper.hidespinner(component, event);
+    },       
+    
+    handleProductSelect : function( component,event,helper ){
+        var val = event.getSource().get("v.value");
+        var nameProd = event.getSource().get("v.name");
+        var prodVals = val.split( "_" );
+        var gen = "";
+        if( prodVals[0].includes( "3" ) ){ gen = "3.0"; }
+        else if( prodVals[0].includes( "2.5" ) ){ gen = "2.5"; }
+        else if( prodVals[0].includes( "2" ) ){ gen = "2.0"; }
+        var layout = prodVals[3];
+        var evtType = prodVals[4];
+        var name;
+        var prodFields = component.find( "prodFields" );
+        for( var i = 0;i<prodFields.length; i++ ){
+            name = prodFields[i].get( "v.name" );
+            if( nameProd == name.split("@")[0] ){
+                if( name.split("@")[1] == "LayoutArrangement" ){
+                    prodFields[i].set("v.value",layout); 
+                }
+                if( name.split("@")[1] == "Generation" ){
+                    prodFields[i].set("v.value",gen); 
+                }
+                if( name.split("@")[1] == "EnvironmentType" ){
+                    prodFields[i].set("v.value",evtType);
+                }
+            }
+        }
+        var dataListPaginated = component.get("v.dataListPaginated");
+        for( var i in dataListPaginated ){
+            if( dataListPaginated[i].key == nameProd ){
+                dataListPaginated[i].value.prodName = val;
+            }
+        }    
+        component.set( "v.dataListPaginated", dataListPaginated );        
+    },
+    
+    onAllDayCheck : function( component,event,helper ){
+        var val = event.getSource().get( "v.value" );        
+        helper.onAllDayCheckHelper( component,event,val );
+    },
+    
+    selectAllCheckbox: function(component, event, helper) {
+        helper.selectAllCheckbox(component, event);
+    },
+    
+    checkboxSelect: function(component, event, helper) {
+        helper.checkboxSelect(component, event);
+    },
+    
+    navigation: function(component, event, helper) {
+        debugger;
+        var sObjectList;
+        if(component.get( "v.dataListCountry").length>0)
+            sObjectList = component.get("v.dataListCountry");
+        else
+            sObjectList = component.get("v.dataList");
+        var end = component.get("v.EndPage");
+        var start = component.get("v.StartPage");
+        var pageSize = component.get("v.PageSize");
+        var whichBtn = event.getSource().get("v.name");
+        if (whichBtn == 'next') {
+            component.set("v.CurrentPage", component.get("v.CurrentPage") + 1);
+            helper.next(component, event, helper, sObjectList,end,start,pageSize);
+        }
+        else if (whichBtn == 'previous') {
+            component.set("v.CurrentPage", component.get("v.CurrentPage") - 1);
+            helper.previous(component, event, helper, sObjectList,end,start,pageSize);
+        }
+        else if (whichBtn == 'first') {
+            component.set("v.CurrentPage", 1);
+            helper.pagination(component, event, sObjectList);
+        }
+        else if (whichBtn == 'last') {
+            component.set("v.CurrentPage", component.get("v.TotalPagesCount"));
+            helper.last(component, event, helper, sObjectList, pageSize);
+       	}
+    }
+})
+
+*******
+HELPER
+*******
+({
+    getViewData : function(component,event) {
+        this.showspinner(component, event);
+        debugger;
+        var action = component.get("c.getKioskCrationData");       
+        action.setCallback(this,function(response){
+            var state = response.getState();      
+            if (component.isValid() && state === 'SUCCESS') {
+                var resultList = response.getReturnValue();	
+                var sortOrderToPicklistVals = [];                                
+                for( var key in resultList.sortOrderToPicklistVals ){
+                    var loopVar = resultList.sortOrderToPicklistVals[key]
+                    var options = [];
+                    for( var opt in loopVar ){
+                        options.push({label: loopVar[opt], value: loopVar[opt]});
+                    }
+                    sortOrderToPicklistVals.push({
+                        key : key,
+                        value : options
+                    });                        
+                }
+                var productNameList = [];                                
+                for( var key in resultList.productNameList ){
+                    productNameList.push({
+                        label : resultList.productNameList[key],
+                        value : resultList.productNameList[key]
+                    });                        
+                }
+                component.set( "v.sortOrderToPicklistVals", sortOrderToPicklistVals );
+                component.set( "v.allData", resultList );
+                component.set( "v.productNameList", productNameList );
+                
+                var countryFilter = [];
+                var j = 0;
+                for( var i in resultList.countryCodeList ){
+                    j++;
+                    countryFilter.push({ label: resultList.countryCodeList[i],
+                                        value: j,                        
+                                        selected: false});                    
+                }                 
+                component.set( "v.countryFilter", countryFilter );
+                
+                var dataListName = [];
+                var dataList = [];
+                // Adding all the records
+                for( var key in resultList.dataList ){
+                    dataList.push({
+                        isSelected : false,
+                        key : key,
+                        value : resultList.dataList[key],
+                        layout : '',
+                        gen : '',
+                        env : ''
+                    });
+                    dataListName.push(resultList.dataList[key].dataValList[0].val);
+                }
+                component.set( "v.dataList", dataList);
+                component.set( "v.caseNameList", dataListName);
+                
+                var nonEditableIndex = [];
+                var nonReqFieldIndexes = [];
+                var colName2Index = {};
+                var emailIndexes = [];
+                for( var i in resultList.mdtList ){
+                    if( !resultList.mdtList[i].isRequired__c ){ nonReqFieldIndexes.push( i.toString() ); }                                                   
+                    if( !resultList.mdtList[i].isEditable__c ){ nonEditableIndex.push( i.toString() ); }                           
+                    if( resultList.mdtList[i].Field_Type__c == "Email" ){}
+                }
+                component.set( "v.nonEditableIndex", nonEditableIndex );
+                component.set( "v.nonReqFieldIndexes", nonReqFieldIndexes );
+            }
+             if(dataList.length>0)
+            	this.pagination(component, event, component.get( "v.dataList"));
+            this.hidespinner(component, event);
+        });                
+        $A.enqueueAction(action);                   
+    },
+    
+    openTimeModalHelper : function( component, event ){
+        var key = event.getSource().get("v.name");        
+        component.set( "v.currentKey", key );
+        
+        var filterOptions = component.get( "v.dataListPaginated" );
+        for( var i in filterOptions ){
+            if( filterOptions[i].key == key ){                
+                component.set( "v.timeDetailList", filterOptions[i].value.timeDetailList );                
+            }
+        }
+        component.set( "v.isOpen", true );
+    },
+    
+    helperhandleKioskCreation : function( component, event, helper ){
+        debugger;
+        var dataList = component.get( "v.dataList" );
+        var dataToSend = [];        
+        var pattern = /^(?:2[0-3]|[01][0-9]|[0-9]):[0-5][0-9]:[0-5][0-9]$/;
+        var emailPattern = /^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$/;                
+        var isValidationPass;
+        var caseIdsWithNoProd = [];
+        var globalMsg = '';
+        var localMsg;
+        var emailIndexes = component.get( "v.emailIndexes" ); 
+        
+        var selectedCaseId = [];
+        for( var j in dataList ){
+            if( dataList[j].isSelected )
+                selectedCaseId.push(dataList[j].key);
+        }
+        
+        if( selectedCaseId.length > 0 ){             
+            var missingMapSize;
+            var missingValDataListKey = {};
+            var key2cmpLstMap = {};
+            var cmp = component.find( "input" );
+            for( var i = 0; i<cmp.length; i++ ){
+                if( selectedCaseId.indexOf( cmp[i].get( "v.name" ) ) != -1 ){
+                    if( key2cmpLstMap[cmp[i].get( "v.name" )] != null && key2cmpLstMap[cmp[i].get( "v.name" )].length > 0 ){                        
+                        key2cmpLstMap[cmp[i].get( "v.name" )].push( cmp[i] );
+                    }else{                        
+                        key2cmpLstMap[cmp[i].get( "v.name" )] = []; 
+                        key2cmpLstMap[cmp[i].get( "v.name" )].push( cmp[i] );  
+                    }                                   	                        
+                }
+            }
+            
+            var timeValErrorKeys = [];
+            var timeValErrorNames = "";
+            var timeValErrorGen = "Please check the Operating hours value for the following accounts\n";
+            var OpenTime; var MidDayCloseTime; var MidDayOpenTime; var CloseTime;                                                                                
+            var openDate; var closeDate; var midDayOpenDate; var midDayCloseDate;                    	                                                             
+            var timeRec;
+            var isCorrecttimeVal = true;
+            var utc = new Date().toJSON().slice(0,10).replace(/-/g,'/'); 
+            var counter = 0;
+            //Check for time values
+            for( var i in dataList ){
+                if( dataList[i].isSelected ){                    
+                    for( var j in dataList[i].value.timeDetailList ){
+                        timeRec = dataList[i].value.timeDetailList[j];
+                        console.log(JSON.stringify(timeRec));
+                        OpenTime = timeRec.OpenTime;
+                        MidDayCloseTime = timeRec.MidDayCloseTime;
+                        MidDayOpenTime = timeRec.MidDayOpenTime;
+                        CloseTime = timeRec.CloseTime;
+                        
+                        if( OpenTime != "" &&  CloseTime != "" && OpenTime.match(pattern) && CloseTime.match(pattern) ){
+                            if(OpenTime==CloseTime && OpenTime!="00:00:00"){
+                                openDate = new Date( utc.split("/")[0], utc.split("/")[1], utc.split("/")[2], OpenTime.split(":")[0], OpenTime.split(":")[1], OpenTime.split(":")[2] );                             
+                                closeDate = new Date( utc.split("/")[0], utc.split("/")[1], utc.split("/")[2], CloseTime.split(":")[0], CloseTime.split(":")[1], CloseTime.split(":")[2] );
+                                if( closeDate > openDate ){
+                                    if( ( MidDayCloseTime != "" && MidDayOpenTime == "" )  || ( MidDayCloseTime != "" && MidDayOpenTime == "" ) ){
+                                        isCorrecttimeVal = false;console.log( "Line 197" );
+                                    }else if( ( MidDayCloseTime != "" && !MidDayCloseTime.match(pattern) ) || ( MidDayOpenTime != "" && !MidDayOpenTime.match(pattern) ) ){
+                                        isCorrecttimeVal = false;console.log( "Line 199" );    
+                                    }         
+                                }else{
+                                    isCorrecttimeVal = false; console.log( "Line 187" );
+                                }   
+                            }
+                        }else{ 
+                            isCorrecttimeVal = false; console.log( "Line 203" );
+                        }  
+                    }    
+                    if( !isCorrecttimeVal ){ 
+                        timeValErrorKeys.push( dataList[i].key ); 
+                        timeValErrorNames += dataList[i].value.dataValList[0].val+" [Page:"+parseInt((counter+component.get("v.PageSize"))/component.get("v.PageSize"))+"]\n";                    }                        
+                }/* End of if */ 
+                counter++;
+            }/* End of for */  
+            
+            var dataToSend = [];
+            var finalKeys2Pass = [];
+            for( var key in key2cmpLstMap ){                
+                for( var j = 0;j<key2cmpLstMap[key].length;j++ ){
+                    var validExpense = key2cmpLstMap[key].reduce(function (validSoFar, inputCmp) {
+                        // Displays error messages for invalid fields
+                        inputCmp.showHelpMessageIfInvalid();
+                        return validSoFar && inputCmp.get('v.validity').valid;
+                    }, true);
+                    if( validExpense ){
+                        if( timeValErrorKeys.indexOf( key ) == -1 && ( finalKeys2Pass.length == 0 || finalKeys2Pass.indexOf( key ) == -1 ) ){
+                            finalKeys2Pass.push( key );	    
+                        }/* End of if */
+                    }/* End of if */   
+                }/* End of for */
+            }/* End of for */  
+            
+            var addedKeys = [];
+            if( finalKeys2Pass.length > 0 ){
+                for( var i in dataList ){
+                    if( finalKeys2Pass.indexOf( dataList[i].key ) != -1 ){                                                                           
+                        dataToSend.push({
+                            key : dataList[i].key,
+                            value : dataList[i].value
+                        });            
+                    }
+                }    
+            }
+            
+            if( timeValErrorNames != "" ){
+                this.showToast( "Error", timeValErrorGen+timeValErrorNames, "error" )    
+            }else{
+                if( dataToSend.length > 0 ){              
+                    var action = component.get("c.createOLIandUpdateSourceRecords");
+                    action.setParams({detailMap : JSON.stringify( dataToSend )});
+                    action.setCallback(this, function( response ){
+                        var state = response.getState();                        
+                        if( state == "SUCCESS"){
+                            var resp = response.getReturnValue();
+                            if( resp == "Success" ){
+                                var msg = "Kiosk Creation for the following Locations is in progress";
+                                for( var i in dataToSend ){
+                                    msg += '\n'+dataToSend[i].value.dataValList[0].val;
+                                } 
+                                component.set( "v.successMsg", msg );
+                                if( response.getReturnValue() == "Success" ){                                                                
+                                    this.showToast( "Success",msg,"success" );
+                                    setTimeout(function(){ 
+                                        $A.get('e.force:refreshView').fire();
+                                    }, 1500);
+                               }    
+                            }
+                        }else{}  						
+                    });
+                    $A.enqueueAction( action );                                        
+                }  
+            }                                                                
+        }    
+    },
+    
+    showToast : function(Title, Message, Type){     
+        var showToast = $A.get("e.force:showToast");
+        showToast.setParams({
+            'title' : Title,
+            'message' : Message,
+            'type' : Type,
+            'duration' : 100
+        });
+        showToast.fire();
+    },
+    
+    onAllDayCheckHelper :  function( component,event,val ){
+        var key = component.get( "v.currentKey" );        
+        var filterOptions = component.get( "v.dataListPaginated" );
+        
+        for( var i in filterOptions ){
+            if( filterOptions[i].key == key ){                                
+                for( var j in filterOptions[i].value.timeDetailList ){
+                    if( val ){
+                        filterOptions[i].value.timeDetailList[j].OpenTime = "00:00:00";
+                        filterOptions[i].value.timeDetailList[j].CloseTime = "23:59:59";
+                        filterOptions[i].value.timeDetailList[j].MidDayOpenTime = "";
+                        filterOptions[i].value.timeDetailList[j].MidDayCloseTime = "";    
+                    }else{
+                        filterOptions[i].value.timeDetailList[j].OpenTime = "";
+                        filterOptions[i].value.timeDetailList[j].CloseTime = "";
+                        filterOptions[i].value.timeDetailList[j].MidDayOpenTime = "";
+                        filterOptions[i].value.timeDetailList[j].MidDayCloseTime = "";                            
+                    }    
+                }                
+                component.set( "v.timeDetailList", filterOptions[i].value.timeDetailList );                
+            }
+        }    
+    },
+    
+    selectAllCheckbox: function(component, event) {
+        var selectedHeaderCheck = event.getSource().get("v.value");
+        var ListPaginated =	component.get("v.dataListPaginated");
+        if (selectedHeaderCheck == true) {
+            for (var i = 0; i < ListPaginated.length; i++)
+                ListPaginated[i].isSelected = true;
+        }
+        else{
+            for (var i = 0; i < ListPaginated.length; i++)
+                ListPaginated[i].isSelected = false;
+        }
+        component.set("v.dataListPaginated", ListPaginated);
+        var dataList =	component.get("v.dataList");
+        var countTotalSelected = 0;
+        for( var i in dataList ){
+            if( dataList[i].isSelected )
+                countTotalSelected += 1;
+        }
+        component.set("v.selectedCountTotal", countTotalSelected);
+        if(countTotalSelected > 0)
+            component.set("v.hideButton", false);
+        else 
+            component.set("v.hideButton", true);
+        
+    },
+    
+    checkboxSelect: function(component, event) {
+        debugger;
+        var getSelectedNumber = 0;
+        var dataList =	component.get("v.dataList");
+        var ListPaginated =	component.get("v.dataListPaginated");
+        for (var i = 0; i < ListPaginated.length; i++) {
+            if(ListPaginated[i].isSelected == true)
+                getSelectedNumber++;
+        }
+        var countTotalSelected = 0;
+        for( var i in dataList ){
+            if( dataList[i].isSelected )
+                countTotalSelected += 1;
+        }
+        component.set("v.selectedCountTotal", countTotalSelected);
+        if(countTotalSelected > 0)
+            component.set("v.hideButton", false);
+        else 
+            component.set("v.hideButton", true);
+        
+        if(getSelectedNumber == component.get("v.dataListPaginated").length)
+            component.find("selectAllId").set("v.value", true);
+        else
+            component.find("selectAllId").set("v.value", false);
+    },
+    
+    pagination: function(component,event,dataToDisplay){
+        if(dataToDisplay.length > 0){
+            var pageSize = component.get("v.PageSize");
+            component.set("v.TotalRecordsCount", dataToDisplay.length);
+            component.set("v.StartPage",0);
+            component.set("v.EndPage",dataToDisplay.length<pageSize?dataToDisplay.length-1:pageSize-1);
+            var PaginationLst = [];
+            for(var i=0; i < pageSize; i++){
+                if(dataToDisplay.length > i)
+                    PaginationLst.push(dataToDisplay[i]);    
+            }
+            component.set("v.dataListPaginated", PaginationLst);
+            component.set("v.NoOfRecordsDisplayed",PaginationLst.length);
+            component.set("v.TotalPagesCount", Math.ceil((dataToDisplay.length) / pageSize));
+        }else{
+            component.set("v.TotalPagesCount", 0);
+        }
+        this.checkboxSelect(component, event);
+    },
+    
+    previous : function(component,event,helper,sObjectList,end,start,pageSize){
+        this.showspinner(component, event);
+        window.setTimeout(
+            $A.getCallback(function() {
+                var lastLength =   component.get('v.NoOfRecordsDisplayed');
+                var Paginationlist = [];
+                var counter = 0;
+                for(var i= start-pageSize; i < start ; i++){
+                    if(i > -1){
+                        Paginationlist.push(sObjectList[i]); 
+                        counter ++;
+                    }else{
+                        start++;
+                    }
+                }
+                start = start - counter;
+                end = start + pageSize-1;
+                component.set("v.StartPage",start);
+                component.set("v.EndPage",end);
+                component.set('v.dataListPaginated', Paginationlist);
+                component.set("v.NoOfRecordsDisplayed",lastLength - component.get('v.dataListPaginated').length);
+                helper.checkboxSelect(component, event);
+                helper.hidespinner(component, event);
+            }), 0);
+    },
+    
+    next : function(component,event,helper,sObjectList,end,start,pageSize){
+        this.showspinner(component, event);
+        window.setTimeout(
+            $A.getCallback(function() {
+                var lastLength =   component.get('v.NoOfRecordsDisplayed');
+                var Paginationlist = [];
+                var counter = 0;
+                for(var i = end + 1; i < end + pageSize + 1; i++){
+                    if(sObjectList.length > i){ 
+                        Paginationlist.push(sObjectList[i]);  
+                    }
+                    counter ++ ;
+                }
+                start = start + counter;
+                end = end + counter;
+                component.set("v.StartPage",start);
+                component.set("v.EndPage",end);
+                component.set('v.dataListPaginated', Paginationlist);
+                component.set("v.NoOfRecordsDisplayed",lastLength+ component.get('v.dataListPaginated').length);
+                helper.checkboxSelect(component, event);
+                helper.hidespinner(component, event);
+            }), 0);
+    },
+    
+    last : function(component,event,helper,sObjectList,pageSize){
+        this.showspinner(component, event);
+        window.setTimeout(
+            $A.getCallback(function() {
+                var listSize = sObjectList.length;
+                var paginationList = []; 
+                for(var i=listSize-(listSize%pageSize); i< listSize; i++)            
+                {            
+                    paginationList.push(sObjectList[i]);            
+                }
+                component.set("v.dataListPaginated", paginationList);
+                component.set("v.NoOfRecordsDisplayed",listSize - pageSize);
+                component.set("v.StartPage",listSize-(listSize%pageSize));
+                component.set("v.EndPage",listSize-1);   
+                helper.checkboxSelect(component, event);
+                helper.hidespinner(component, event);
+            }), 0);
+    },
+    
+    showspinner : function(component, event){
+        var m = component.find('modalspinnerLookup');
+        $A.util.removeClass(m, "slds-hide");
+    },
+    
+    hidespinner : function(component, event){
+        var m = component.find('modalspinnerLookup');
+        $A.util.addClass(m, "slds-hide");
+    },
+    
+})
+
+
+
