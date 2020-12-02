@@ -1,0 +1,131 @@
+public class Batch_LocationModelAccounts implements Database.batchable<sObject>, Database.stateful, schedulable{ 
+    Public List<Batch_Settings__mdt> mdtBatchSettings;
+    Public List<Key_Value_Type_Map__mdt> mdtKeyValueType;
+    Public String csvBody = '';
+    Public List<String> orderedMapKeys = new List<String>();
+    Public Map<String, String> CSVFileFields = new Map<String, String>();
+    Public Map<String, List<String>> emailAddresses = new Map<String, List<String>>();
+    Public Map<String, String> CustomMap = new Map<String, String>();
+    Public Account acc;
+    
+    Public Batch_LocationModelAccounts(){
+        mdtBatchSettings = [ SELECT MasterLabel, Query__c from  Batch_Settings__mdt where DeveloperName = 'Batch_LocationModelAccounts'];
+        mdtKeyValueType = [Select Key__c, Value__c, Order__c, Type__c from Key_Value_Type_Map__mdt where Batch_Settings__r.DeveloperName = 'Batch_LocationModelAccounts' AND isActive__c = true order by Order__c asc];
+        
+        for(Key_Value_Type_Map__mdt mdtRec : mdtKeyValueType){
+            if(mdtRec.Type__c == 'CSV Fields'){
+                orderedMapKeys.add(mdtRec.Key__c);
+                CSVFileFields.put(mdtRec.Key__c, mdtRec.Value__c);
+            }
+            if(mdtRec.Type__c == 'Email Addresses'){
+                string key = mdtRec.Key__c.toLowerCase();
+                list<string> values = mdtRec.Value__c.split(',');
+                emailAddresses.put(key, values);
+            }
+            if(mdtRec.Type__c == 'Custom'){
+                CustomMap.put(mdtRec.Key__c, mdtRec.Value__c);
+            }
+        }
+        system.debug('CSVFileFields::::'+CSVFileFields);
+        system.debug('emailAddresses::::'+emailAddresses);
+        system.debug('CustomMap::::'+CustomMap);
+        
+        acc = new Account();
+        acc.recordTypeId = Schema.sObjectType.Account.getRecordtypeInfosByName().get('Location').getRecordTypeId();
+        acc.name = 'Test Acc';
+        acc.shippingPostalCode = '12345';
+        insert acc;
+    }
+    
+    public void execute( schedulableContext sc ){ 
+        Database.executeBatch( new Batch_LocationModelAccounts());
+    }
+    
+    public Database.queryLocator start( Database.batchableContext bc ){ 
+        system.debug('query::::'+mdtBatchSettings[0].Query__c);
+        return Database.getQueryLocator( mdtBatchSettings[0].Query__c );
+    }
+    
+    public void execute( Database.batchableContext bc, List<sObject> scope ){
+        system.debug('here:::'+scope);
+        List<Account> accList = new List<Account>();
+        For( sObject eachRec : scope ){
+            accList.add(new Account(id = string.valueOf(eachRec.get('Id')), Location_Model_Status__c = 'LM Run Complete'));
+            for(string key : orderedMapKeys){
+                string fieldValue = '';
+                if(key.contains('.')){
+                    if(key == 'Parent.Name'){
+                        Account recAcc = (Account)eachRec;
+                        fieldValue = recAcc.Parent.Name;
+                    }
+                    else
+                        fieldValue = string.valueOf(eachRec.getSObject(key.substringBefore('.')).get(key.substringAfter('.')));
+                }
+                else
+                    fieldValue = string.valueOf(eachRec.get(key));
+                
+                if(fieldValue == null)
+                    fieldValue = '';
+                csvBody +=  '"'+fieldValue+'",' ;
+            }
+            csvBody += '\n';
+        }
+        system.debug('csvBody::::'+csvBody);
+        
+        if(accList.size()>0)
+            update accList;
+    }
+    
+    public void finish( Database.batchableContext bc ){
+         string header = '';
+        
+        for(string key : orderedMapKeys){
+            header +=  '"'+CSVFileFields.get(key)+'",' ;
+        }
+        string csvFile = header + '\n' + csvBody;
+        system.debug('csvFile::::'+csvFile);
+        
+        List<OrgWideEmailAddress> orgWideAdd = [select id, DisplayName, Address from OrgWideEmailAddress where DisplayName =: CustomMap.get('Organization Wide Address') ];
+        EmailTemplate tempID = [SELECT Id,Subject, HTMLValue,Name, BrandTemplateId, FolderName FROM EmailTemplate WHERE Name = 'Location Model : NA'];
+        
+        Contact con = new Contact();
+        con.lastName = 'Test';
+        con.accountId = acc.id;
+        con.email = orgWideAdd[0].Address;
+        
+        insert con;
+        
+        Messaging.EmailFileAttachment csvAttc = new Messaging.EmailFileAttachment();
+        csvAttc.setFileName('LM Run-'+system.today()+'.csv');
+        csvAttc.setBody(Blob.valueOf(csvFile));
+        Messaging.SingleEmailMessage email =new Messaging.SingleEmailMessage();
+        email.setToAddresses( emailAddresses.get('to') );
+        email.setCcAddresses( emailAddresses.get('cc') );
+        email.setOrgWideEmailAddressId( orgWideAdd[0].id );
+        email.settargetObjectId(con.id);  
+        email.setTemplateId(tempID.id);
+        email.setSaveAsActivity( false );
+        email.setFileAttachments(new Messaging.EmailFileAttachment[]{csvAttc});
+        Messaging.SendEmailResult [] r = Messaging.sendEmail(new Messaging.SingleEmailMessage[] {email});
+        
+        delete acc;
+        
+        ContentVersion documentVersion =  new ContentVersion(title = 'LM Run-'+system.today()+'.csv', pathOnClient = '/'+'LM Run-'+system.today()+'.csv', versionData = Blob.valueOf(csvFile));
+        insert documentVersion;
+        
+        EmailMessage em = new EmailMessage();
+        em.FromAddress = orgWideAdd[0].Address;
+        //em.RelatedToId = vendorId;                            
+        em.ToAddress = string.join(email.toAddresses, ', ');
+        em.CcAddress = string.join(email.ccAddresses, ', ');
+        em.Subject = email.subject;                           
+        em.HtmlBody = email.htmlBody;
+        insert em;
+        
+        ContentDocumentLink contentlink=new ContentDocumentLink();
+        contentlink.LinkedEntityId = em.id;
+        contentlink.ShareType= 'V';
+        contentlink.ContentDocumentId = [Select ID, contentdocumentid from ContentVersion where ID =: documentVersion.Id].contentdocumentid;
+        insert contentlink;
+    }
+}
